@@ -259,14 +259,17 @@ cache hit: 8, 38
 ### What about DCO?
 I use a simple way to check whether DCO kicks in (May not be a perfect way).
 
-In the previous experiments, we only:
+In the previous experiments, we only do time measurement in 500 iterations, and repeat the nested loop 10 times.
 ```
 REPEAT10(
 	for(i = 0 to 50){
-		time_measurement();
+		for(j = 0 to 10){
+			time_measurement();
+		}
 	}
 )
 ```
+However, in our spectre, we have to do 200 iterations for spectre, and repeat it with 16 * 20 times.
 ```
 #define REPEAT_N(x) x x x x x x x x x x
 REPEAT16(
