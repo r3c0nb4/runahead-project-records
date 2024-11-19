@@ -258,7 +258,21 @@ cache hit: 8, 38
 
 ### What about DCO?
 I use a simple way to check whether DCO kicks in (May not be a perfect way).
+```
+#define REPEAT_N(x) x x x x x x x x x x
+REPEAT16(
+	REPEAT20(
+		for(i = 0 to 20){
+			for(j = 0 to 10){
+				train branch predictor
+				spectre_v1();
+				time_measurement();
+			}
+		}
+	)
+)
 
+```
 ```
 static inline __attribute__((always_inline)) void measure_time() {
 	uint64_t init;
