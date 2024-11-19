@@ -258,6 +258,15 @@ cache hit: 8, 38
 
 ### What about DCO?
 I use a simple way to check whether DCO kicks in (May not be a perfect way).
+
+In the previous experiments, we only:
+```
+REPEAT10(
+	for(i = 0 to 50){
+		time_measurement();
+	}
+)
+```
 ```
 #define REPEAT_N(x) x x x x x x x x x x
 REPEAT16(
@@ -321,7 +330,6 @@ static inline __attribute__((always_inline)) void spectre_v1( size_t index) {
 }
 
 ```
-
 ![avatar](./imgs/Spectre_with_simple_dco_detect.png)
 
 ## Discussion and Questions
