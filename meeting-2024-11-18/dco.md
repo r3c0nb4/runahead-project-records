@@ -269,7 +269,7 @@ REPEAT10(
 	}
 )
 ```
-However, in our spectre, we have to do 200 iterations for spectre, and repeat it with 16 * 20 times.
+However, in our spectre, we have to do 200 iterations for spectre, and repeat it with 16 * 20 times, we measure the cycles for 200 `mov` under that circumstance, and make sure the 200 `mov` are not removed by DCO.
 ```
 #define REPEAT_N(x) x x x x x x x x x x
 REPEAT16(
