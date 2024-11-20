@@ -1,11 +1,10 @@
 # Further plan
-
-## Trigger event for runahead.
+Here are some high-level ideas about the experiments to do in the future. I have not 
+designed all of the experiments in detail.
+## 1. Trigger event for runahead.
 Does L2/3 cache miss will trigger runahead?
 
-
-## Prefetcher
-### Prefetch mode: for linear memory, will runahead fetch more data?
+## 2. Prefetch mode: for linear memory, will runahead fetch more data?
 "Run-ahead uses the idle time that a CPU
 spends waiting on a long latency operation to
 discover cache and DTLB misses further
@@ -23,7 +22,7 @@ pick = array[2];
 ```
 
 
-## When will runahead stop?
+## 3. When will runahead stop?
 1. Runahead stops when the data which triggers runahead is available in the cache.
 
 For the following example, in runhead mode, assume data1, data2, data3 generate three prefetch requests.
@@ -44,10 +43,48 @@ data2       //Assume data is available before prefetch request for data3 is comp
 data3       //runahead mode stops when data3 prefetching is completed.
 ```
 
-## What about other instructions which are not required by memory fetching in runahead?
+## 4. What about other instructions which are not required by memory fetching in runahead?
+### 4.1 Arithmetic instructions
 We already know: `x = x + 1` will be executed, because `pick = buffer[x]` depends on the value of `x`. However, we do not know whether `y = y + 1` will be executed or not, since `y` is not required by `pick` operation, it will not change the state of any microarchitecture components. How can we figure it out?
 ```
 x = x + 1;
 y = y + 1;
 pick = buffer[x]
+```
+### 4.2 Special control instructions
+There are many instructions which are able to control the some component of the processor, for 
+example `flush` is used to flush the data from cache to memory, and `isb` instruction is 
+used as a memory barrier (The next instruction will not be executed until all the previous `store`,
+memory store instructions are retired).
+
+What are the behaviors of those instructions in runahead?
+They will also be executed: we should see the same behaviors without runahead. 
+Example: if `flush` is executed in runahead, we should see the data is flushed to main memory.
+
+
+## 5. Branch predictor
+In previous experiments, we know that runahead is able to change the state of cache, to be more specific,
+runahead prefetches the data which tends to cause cache miss to cache, in this case, 
+the cache's state is changed.
+
+Cache is stateful, since we are able to change the state of cache, at the same time,
+we can monitor the cache's state is changing (Simply by checking if a specific data is in/not in the cache).
+
+We may assume another component of processor is also stateful: branch predictor.
+Branch predictor records the branch history and decide if the branch is taken or not. Definitely, branch 
+predictor is stateful.
+
+If we put a branch in runahead, will taken/no-taken history be recorded in branch predictor?
+A simple example: in runahead mode, we call `func()`, in this case, will branch in `func` change 
+its state: log new taken/no-taken information it gets in runahead mode, or it will be discarded.
+```
+func(){
+    if(...)
+        ...
+    else
+        ...
+}
+
+load data // data is cache missed to trigger runahead
+func()    // we call func function
 ```
