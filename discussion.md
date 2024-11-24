@@ -104,5 +104,62 @@ if(a < b){
 }
 ```
 
+## More consideration:
+In this section, we discuss how to distinguish runahead from speculation execution in spectre v1 again.
+
+<u>__Current issue: it is hard to distinguish because we do not know the size of speculation execution window.__</u> https://arxiv.org/pdf/2312.01832
+
+Let's go back to paper: __SPECRUN: The Danger of Speculative Runahead Execution in
+Processors__. The experiment in the paper also utilize spectre-PHT(The code snippet is in Figure 8 in the paper). How did they distinguish runahead from speculation, the answer is that the execution window of speculation is known.
+
+### Description: 
+In the following figure, spectre is defined as: accessing secret happens in the ROB (a). 
+However in runahead, it happens after ROB (b). 
+Why: if the instructions in ROB are not completed, it is still speculation, runahead will not be triggered. Runahead happens only when all instructions in ROB are completed but not retired. If we see an instruction which is not in the ROB brings data to cache, it is definitely caused by runahead execution. Generally, the ROB size is the maximum execution window size for speculation.
+
+We should have this conclusion about this paper: if an instruction which is not in the ROB fetch data to cache, it is runahead, otherwise it is speculation.
+![SPECRUN](./imgs/specrun.png)
+
+### What is our issue?
+From previous section, the paper uses ROB to distinguish runahead from speculation, but in Nvidia denver, there is no ROB; thus we are not able to know the execution window size for speculation with the methodology in the paper SPECRUN.
+
+### What is the execution window size for in-order-cpu?
+For now, let's forget everything of the two code snippets about how to distinguish runahead from speculation I wrote in previous section. (It may not be suitable, actually it does have issues.)
+
+Considering such question: do we know what is the execution window size for speculation in Nvidia denver(In-order). 
+
+Let's just consider the following code snippet:
+There are 100 `xor` instructions in the branch, and they are all data dependent, and have to be executed one by one; thus we do not need to consider about parallel execution in this case.
+
+```
+flush(&b);
+// we train the branch at first to trigger misprediction
+if(a < b){
+    @repeat 100
+        xor reg1, reg1, 1      // reg1 = reg1 xor 1
+    @end repeat
+    load reg, var
+}
+```
+
+Initially, when the branch instruction is decoded, the pipeline should look like the following figure. The `load b` instruction has been decoded, and we know the `load` will be executed somewhere in pipeline, let's assume the `load` operation will be passed to load/store unit at the end of pipeline (It depends on the design, but it doesn't matter for the analysis).
+![pipeline4](./imgs/pipeline4.png)
+
+Let's assume the branch predictor decide to take the branch, and after a few cycles, the pipeline should be: 
+![pipeline5](./imgs/pipeline5.png)
+
+Here is the question I want to ask:
+
+<u>__We know that in speculation execution, instructions will not retire. In the in-order cpu, do those instructions remain staying in pipeline? For out-of-order cpu, instructions are waiting in the ROB. I don't know what is the case for in-order cpu.__</u>
+
+<u>__If those instructions will not retire, and staying in the pipeline, will the pipeline stall because there is no space in pipeline?__</u> 
+
+If the pipeline stalls, the decoder will not continue decoding instructions. Then, the execution window size for speculation is around the size of pipeline.
+
+
+
+
+
+
 
 
