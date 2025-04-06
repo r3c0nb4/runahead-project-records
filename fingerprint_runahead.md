@@ -1,15 +1,15 @@
 # Fingerprint runahead
-## 1.1 Denver 2 cpu
+## 1 Denver 2 cpu
 The Denver 2 CPU is a superscalar processor. While documentation for Denver 1 explicitly states it operates in a strictly in-order manner, we currently lack definitive confirmation about Denver 2's execution behavior. Although preliminary experiments (e.g., instruction latency analysis) provide circumstantial evidence, such methods cannot conclusively determine whether Denver 2 retains in-order execution or adopts out-of-order capabilities. Further microarchitectural profiling or direct vendor clarification would be required for authoritative verification.
 
-## Fingerprint Runahead execution
-### 1. What is unique in runahead?
+## 2. Fingerprint Runahead execution
+### 2.1 What is unique in runahead?
 Based on later research on runahead execution and IBM Power9's runahead implementation, runahead mechanisms are likely to discard floating-point instructions because they are rarely used for address calculation (e.g., pointer arithmetic). However, in general speculative execution (e.g., branch prediction or prefetching), there is no inherent reason to discard floating-point operations, as they may still contribute to program logic and data flow. The distinction arises because runahead focuses specifically on prefetching memory addresses, while broader speculation aims to optimize overall execution efficiency.
 
-### 1.1 Experiment assumption
+### 2.2 Experiment assumption
 We hypothesize that floating-point operations are discarded during runahead execution in the Denver 2 processor.
 
-### 1.2 Experiment design
+### 2.3 Experiment design
 We employ the Spectre V1 gadget to test this hypothesis. <u>Please noted that, `index` is larger than `size`, we are leaking another buffer rather than `fake_buffer`, and variable `size` is not in the cache. </u> 
 ```
 /*Spectre V1*/
@@ -42,23 +42,23 @@ if (index < size){
 }
 ```
 
-### 1.3 Hypothesis
+### 2.4 Hypothesis
 If the control group (using `mov` instructions) shows cache hits in the reloadbuffer, while the experimental group (with the floating-point `fcvtzs` instruction) does not, this demonstrates two conclusions:
 
 1. Runahead Execution Was Very Possibly Triggered: The observed behavior aligns with runahead mode (speculative prefetching during long-latency stalls).
 
 2. Floating-Point Instructions Are Discarded in Runahead: The `fcvtzs` instruction was ignored during runahead.
 
-## Result
+## 3. Result
 In the experimental group containing floating-point instructions, we observed no cache hits. However, in the control group (without floating-point instructions), stable cache hits were detected.
 
-## Compare with speculaion execution
+## 4. Compare with speculaion execution
 We need to compare whether the `fcvtzs` instruction gets discarded during speculative execution.
 
-### Assumption
+### 4.1 Assumption
 Assuming Spectre v1 can still be triggered without causing a cache miss, i.e., when the branch resolution time is relatively short. For example, in a condition like `if (a < ***b_ptr)`, multiple levels of pointer dereferencing introduce several `ldr` instructions, which may exhaust backend resources and cause pipeline stalls. This could make speculative execution more pronounced.
 
-### Experiment Design
+### 4.2 Experiment Design
 For the Spectre v1 gadget, we make the following modification: we use a three-level chained pointer (`*size_ptr1 = &size; **size_ptr2 = &size_ptr1; ***size_ptr3 = &size_ptr2`)to reference the variable `size`, and we preload each pointer and the size variable in advance to ensure that no cache miss occurs during execution, thus avoiding runahead execution. At the same time, since the Denver 2 processor may only have two units capable of handling load instructions simultaneously, performing three consecutive dereferences (`if(index < ***size_ptr3)`) of `size_ptr3` within the branch instruction could lead to backend resource contention.
 
 In addition, within the branch condition, we introduce a dependency between `index` and a floating-point instruction `fcvtzs`, in order to observe whether a cache hit signal still occurs in the end.
@@ -75,7 +75,7 @@ if (index < ***size_ptr3){
 	pick = reloadbuffer[fake_buffer[index] << 12];
 }
 ```
-### Hypothesis
+### 4.3 Hypothesis
 1. If we observe cache hit signal finally: dereference the three level pointer could cause more pronouced speculation execution, and floating point instructions are not skipped in speculation execution.
 2. If not: speculation execution window is too small, or fcvtzs is also discarded in speculation execution.
 
