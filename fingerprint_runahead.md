@@ -76,8 +76,8 @@ if (index < ***size_ptr3){
 }
 ```
 ### 4.3 Hypothesis
-1. If we observe cache hit signal finally: dereference the three level pointer could cause more pronouced speculation execution, and floating point instructions are not skipped in speculation execution.
-2. If not: speculation execution window is too small, or fcvtzs is also discarded in speculation execution.
+1. If we observe cache hit signal finally: dereference the three level pointer could cause more pronouced speculation execution, and floating point instructions are not skipped in speculative execution.
+2. If not: speculative execution window is too small, or fcvtzs is also discarded in speculation execution.
 
 
 
