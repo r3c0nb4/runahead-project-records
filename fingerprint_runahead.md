@@ -51,3 +51,34 @@ If the control group (using `mov` instructions) shows cache hits in the reloadbu
 
 ## Result
 In the experimental group containing floating-point instructions, we observed no cache hits. However, in the control group (without floating-point instructions), stable cache hits were detected.
+
+## Compare with speculaion execution
+We need to compare whether the `fcvtzs` instruction gets discarded during speculative execution.
+
+### Assumption
+Assuming Spectre v1 can still be triggered without causing a cache miss, i.e., when the branch resolution time is relatively short. For example, in a condition like `if (a < ***b_ptr)`, multiple levels of pointer dereferencing introduce several `ldr` instructions, which may exhaust backend resources and cause pipeline stalls. This could make speculative execution more pronounced.
+
+### Experiment Design
+For the Spectre v1 gadget, we make the following modification: we use a three-level chained pointer (`*size_ptr1 = &size; **size_ptr2 = &size_ptr1; ***size_ptr3 = &size_ptr2`)to reference the variable `size`, and we preload each pointer and the size variable in advance to ensure that no cache miss occurs during execution, thus avoiding runahead execution. At the same time, since the Denver 2 processor may only have two units capable of handling load instructions simultaneously, performing three consecutive dereferences (`if(index < ***size_ptr3)`) of `size_ptr3` within the branch instruction could lead to backend resource contention.
+
+In addition, within the branch condition, we introduce a dependency between `index` and a floating-point instruction `fcvtzs`, in order to observe whether a cache hit signal still occurs in the end.
+
+```
+/*fcvtzs instruction is discarded or not in speculation*/
+*size_ptr1 = &size;
+**size_ptr2 = &size_ptr1;
+***size_ptr3 = &size_ptr2; //make sure everything is loaded in the cache
+if (index < ***size_ptr3){	
+    reg_floating = 0;
+    fcvtzs reg_floating -> reg_integer;
+    index = index + reg_integer;
+	pick = reloadbuffer[fake_buffer[index] << 12];
+}
+```
+### Hypothesis
+1. If we observe cache hit signal finally: dereference the three level pointer could cause more pronouced speculation execution, and floating point instructions are not skipped in speculation execution.
+2. If not: speculation execution window is too small, or fcvtzs is also discarded in speculation execution.
+
+
+
+
